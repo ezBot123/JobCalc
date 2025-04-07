@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Job Report</title>
+  <style>
+    body {
+      background-color: #cce6ff;
+      font-family: Arial, sans-serif;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    label {
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    input, select {
+      flex: 1;
+      border: 2px solid black;
+      background-color: white;
+      padding: 5px;
+    }
+
+    .parts-section {
+      border: 2px solid black;
+      background-color: #d9ecff;
+      padding: 10px;
+    }
+
+    .part-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .part-row input[type="text"] {
+      flex: 2;
+    }
+
+    .part-row input[type="number"] {
+      width: 60px;
+    }
+
+    .part-actions button, .part-row button {
+      padding: 5px 10px;
+      font-weight: bold;
+      border: 2px solid black;
+      background-color: white;
+      cursor: pointer;
+    }
+
+    .section-title {
+      margin-top: 30px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    #totalCost {
+      font-weight: bold;
+      font-size: 1.2em;
+      margin-top: 20px;
+      padding: 10px;
+      border: 2px solid black;
+      background-color: #d9ecff;
+      text-align: center;
+    }
+
+    #proceedBox {
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      margin-top: 20px;
+      border: 2px solid black;
+    }
+
+    .no {
+      background-color: #ffcccc;
+      color: #660000;
+    }
+
+    .yes {
+      background-color: #ccffcc;
+      color: #003300;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <label for="jobNumber">Job Number</label>
+      <input type="text" id="jobNumber">
+    </div>
+
+    <div class="row">
+      <label for="menCount">How Many Men</label>
+      <select id="menCount" onchange="calculateTotal()">
+        <option value="1">1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="firstCall">Is This The First Call Out Since Arriving At Site</label>
+      <select id="firstCall" onchange="calculateTotal()">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="useScissor">Have You Or Do You Need To Use The Scissor</label>
+      <select id="useScissor" onchange="calculateTotal()">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="hoursOnJob">How Long In Hours Have You Been On This Job</label>
+      <input type="number" id="hoursOnJob" min="0" onchange="calculateTotal()" oninput="calculateTotal()">
+    </div>
+
+    <div class="row">
+      <label for="hoursNeeded">How Many More Hours Do You Need</label>
+      <input type="number" id="hoursNeeded" min="0" onchange="calculateTotal()" oninput="calculateTotal()">
+    </div>
+
+    <div class="section-title">Van Parts Required Select:</div>
+    <div class="parts-section" id="partsContainer">
+      <div class="part-row">
+        <input type="text" placeholder="Enter Part Name" oninput="calculateTotal()">
+        <input type="number" min="1" value="1" oninput="calculateTotal()">
+        <button onclick="removePart(this)">Remove</button>
+      </div>
+    </div>
+    <div class="part-actions">
+      <button onclick="addPart()">+ Add Part Line</button>
+    </div>
+
+    <div id="totalCost">Total: £0.00</div>
+    <div id="proceedBox" class="no">No, Call The Office</div>
+  </div>
+
+  <script>
+    const PART_PRICES = {
+      "part 1": 50,
+      "part 2": 75,
+      "part 3": 100,
+      "part 4": 125,
+      "part 5": 225,
+      "part 6": 275
+    };
+
+    const CALLOUT_CHARGE_PER_ENGINEER = 60;
+    const SCISSOR_CHARGE = 350;
+    const HOURLY_RATE = 50;
+
+    const inputsToSave = ["jobNumber", "menCount", "firstCall", "useScissor", "hoursOnJob", "hoursNeeded"];
+
+    function calculateTotal() {
+      let total = 0;
+
+      const menCount = parseInt(document.getElementById("menCount").value) || 0;
+      const isFirstCall = document.getElementById("firstCall").value === "Yes";
+      const useScissor = document.getElementById("useScissor").value === "Yes";
+      const hoursOnJob = parseFloat(document.getElementById("hoursOnJob").value) || 0;
+      const hoursNeeded = parseFloat(document.getElementById("hoursNeeded").value) || 0;
+
+      if (isFirstCall) total += CALLOUT_CHARGE_PER_ENGINEER * menCount;
+      if (useScissor) total += SCISSOR_CHARGE;
+
+      total += (hoursOnJob + hoursNeeded) * HOURLY_RATE;
+
+      const partInputs = document.querySelectorAll("#partsContainer .part-row");
+      const parts = [];
+
+      partInputs.forEach(row => {
+        const partName = row.children[0].value.trim().toLowerCase();
+        const quantity = parseInt(row.children[1].value) || 1;
+        parts.push({ name: partName, quantity });
+
+        if (PART_PRICES[partName]) {
+          total += PART_PRICES[partName] * quantity;
+        }
+      });
+
+      document.getElementById("totalCost").innerText = `Total: £${total.toFixed(2)}`;
+      updateProceedBox(total);
+
+      // Save fields
+      inputsToSave.forEach(id => {
+        localStorage.setItem(id, document.getElementById(id).value);
+      });
+      localStorage.setItem("parts", JSON.stringify(parts));
+    }
+
+    function updateProceedBox(total) {
+      const box = document.getElementById("proceedBox");
+      if (total < 650) {
+        box.className = "yes";
+        box.innerText = "Yes, Proceed With Job";
+      } else {
+        box.className = "no";
+        box.innerText = "No, Call The Office";
+      }
+    }
+
+    function addPart(name = "", qty = 1) {
+      const container = document.getElementById('partsContainer');
+      const row = document.createElement('div');
+      row.className = 'part-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Enter Part Name" value="${name}" oninput="calculateTotal()">
+        <input type="number" min="1" value="${qty}" oninput="calculateTotal()">
+        <button onclick="removePart(this)">Remove</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removePart(button) {
+      button.parentNode.remove();
+      calculateTotal();
+    }
+
+    function restoreFromStorage() {
+      inputsToSave.forEach(id => {
+        if (localStorage.getItem(id)) {
+          document.getElementById(id).value = localStorage.getItem(id);
+        }
+      });
+
+      const savedParts = JSON.parse(localStorage.getItem("parts") || "[]");
+      if (savedParts.length > 0) {
+        savedParts.forEach(part => addPart(part.name, part.quantity));
+      } else {
+        addPart();
+      }
+
+      calculateTotal();
+    }
+
+    window.onload = restoreFromStorage;
+  </script>
+</body>
+</html>
